@@ -1,6 +1,5 @@
 const connection = require("../data/db");
 
-
 //index
 const index = (req, res) => {
   const sql = "SELECT * FROM posts";
@@ -72,20 +71,33 @@ const modify = (req, res) => {
 
 // destroy
 const destroy = (req, res) => {
-  const id = parseInt(req.params.id);
+  const { id } = req.params;
 
-  const post = posts.find((post) => post.id === id);
+  // First, check if the post exists
+  connection.query(
+    "SELECT * FROM posts WHERE id = ?",
+    [id],
+    (err, results) => {
+      if (err)
+        return res
+          .status(500)
+          .json({ error: true, message: "Database query failed" });
+      if (results.length === 0) {
+        return res
+          .status(404)
+          .json({ error: true, message: "Post not found" });
+      }
 
-  if (!post) {
-    res.status(404);
-    return res.json({
-      status: 404,
-      error: "Not Found",
-      message: "Post Not Found",
-    });
-  }
-  posts.splice(posts.indexOf(post), 1);
-  res.sendStatus(204);
+      // Delete the post
+      connection.query("DELETE FROM posts WHERE id = ?", [id], (err) => {
+        if (err)
+          return res
+            .status(500)
+            .json({ error: true, message: "Failed to delete post" });
+        res.sendStatus(204);
+      });
+    },
+  );
 };
 
 module.exports = {
