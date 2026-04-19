@@ -14,12 +14,44 @@ const index = (req, res) => {
 
 // show
 const show = (req, res) => {
-  const post = posts.find((post) => post.id === Number(req.params.id));
-  if (post) {
-    res.json(post);
-  } else {
-    res.status(404).json({ error: "Post non trovato" });
-  }
+  const { id } = req.params;
+
+  const sql = "SELECT * FROM posts WHERE id = ?";
+
+  connection.query(sql, [id], (err, postResults) => {
+    if (err) {
+      console.error("Error fetching post:", err.message);
+      return res
+        .status(500)
+        .json({ error: true, message: "Database query failed" });
+    }
+
+    if (!postResults || postResults.length === 0) {
+      return res.status(404).json({ error: true, message: "Post not found" });
+    }
+
+    const post = postResults[0];
+
+    const tagsSql = `
+      SELECT tags.*
+      FROM tags
+      JOIN post_tag ON tags.id = post_tag.tag_id
+      WHERE post_tag.post_id = ?
+    `;
+
+    connection.query(tagsSql, [id], (err, tagsResults) => {
+      if (err) {
+        console.error("Error fetching tags:", err.message);
+        return res
+          .status(500)
+          .json({ error: true, message: "Database query failed" });
+      }
+
+      // Attach tags to the post
+      post.tags = tagsResults;
+      res.json(post);
+    });
+  });
 };
 
 // store
@@ -74,30 +106,24 @@ const destroy = (req, res) => {
   const { id } = req.params;
 
   // First, check if the post exists
-  connection.query(
-    "SELECT * FROM posts WHERE id = ?",
-    [id],
-    (err, results) => {
+  connection.query("SELECT * FROM posts WHERE id = ?", [id], (err, results) => {
+    if (err)
+      return res
+        .status(500)
+        .json({ error: true, message: "Database query failed" });
+    if (results.length === 0) {
+      return res.status(404).json({ error: true, message: "Post not found" });
+    }
+
+    // Delete the post
+    connection.query("DELETE FROM posts WHERE id = ?", [id], (err) => {
       if (err)
         return res
           .status(500)
-          .json({ error: true, message: "Database query failed" });
-      if (results.length === 0) {
-        return res
-          .status(404)
-          .json({ error: true, message: "Post not found" });
-      }
-
-      // Delete the post
-      connection.query("DELETE FROM posts WHERE id = ?", [id], (err) => {
-        if (err)
-          return res
-            .status(500)
-            .json({ error: true, message: "Failed to delete post" });
-        res.sendStatus(204);
-      });
-    },
-  );
+          .json({ error: true, message: "Failed to delete post" });
+      res.sendStatus(204);
+    });
+  });
 };
 
 module.exports = {
