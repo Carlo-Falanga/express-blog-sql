@@ -1,5 +1,8 @@
 const posts = require("../data/postData");
 
+require('../data/db');
+
+
 //index
 const index = (req, res) => {
   let filteredPosts = posts;
