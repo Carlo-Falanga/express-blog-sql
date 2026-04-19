@@ -1,17 +1,16 @@
-const posts = require("../data/postData");
-
-require('../data/db');
+const connection = require("../data/db");
 
 
 //index
 const index = (req, res) => {
-  let filteredPosts = posts;
-
-  if (req.query.tags) {
-    filteredPosts = posts.filter((post) => post.tags.includes(req.query.tags));
-  }
-
-  res.json(filteredPosts);
+  const sql = "SELECT * FROM posts";
+  connection.query(sql, (err, results) => {
+    if (err) {
+      console.error("Error fetching posts:", err.message);
+      return res.status(500).json({ error: "Error fetching posts" });
+    }
+    res.json(results);
+  });
 };
 
 // show
